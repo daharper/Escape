@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{3D776265-C3D9-49BC-A4F2-BDAAD56C6BD4}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Escape.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="EscapeTests.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Escape">
+        <MSBuild Projects="Escape.dproj"/>
+    </Target>
+    <Target Name="Escape:Clean">
+        <MSBuild Projects="Escape.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Escape:Make">
+        <MSBuild Projects="Escape.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="EscapeTests">
+        <MSBuild Projects="EscapeTests.dproj"/>
+    </Target>
+    <Target Name="EscapeTests:Clean">
+        <MSBuild Projects="EscapeTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="EscapeTests:Make">
+        <MSBuild Projects="EscapeTests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Escape;EscapeTests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Escape:Clean;EscapeTests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Escape:Make;EscapeTests:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
