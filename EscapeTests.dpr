@@ -18,8 +18,11 @@ uses
   SharedKernel.Container in 'SharedKernel\SharedKernel.Container.pas',
   SharedKernel.Core in 'SharedKernel\SharedKernel.Core.pas',
   SharedKernel.Integrity in 'SharedKernel\SharedKernel.Integrity.pas',
-  SharedKernel.Stream.Helper in 'SharedKernel\SharedKernel.Stream.Helper.pas',
-  SharedKernel.Stream in 'SharedKernel\SharedKernel.Stream.pas';
+  SharedKernel.StreamHelper in 'SharedKernel\SharedKernel.StreamHelper.pas',
+  SharedKernel.Stream in 'SharedKernel\SharedKernel.Stream.pas',
+  SharedKernel.Mocks.Customer in 'SharedKernel.Mocks\SharedKernel.Mocks.Customer.pas',
+  SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas',
+  SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

@@ -1,12 +1,12 @@
 {*******************************************************************************
-  Unit:        SharedKernel.Integrity
-  Purpose:     Types to assert program integrity - contracts, assumptions, etc.
+  Unit:        SharedKernel.StreamHelper
+  Purpose:     Extension methods for working with Stream.
   Author:      David Harper
   License:     MIT
   History:     2025-08-20  Initial version
 *******************************************************************************}
 
-unit SharedKernel.Integrity;
+unit SharedKernel.StreamHelper;
 
 interface
 

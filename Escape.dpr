@@ -10,7 +10,9 @@ uses
   SharedKernel.Core in 'SharedKernel\SharedKernel.Core.pas',
   SharedKernel.Container in 'SharedKernel\SharedKernel.Container.pas',
   SharedKernel.Stream in 'SharedKernel\SharedKernel.Stream.pas',
-  SharedKernel.Stream.Helper in 'SharedKernel\SharedKernel.Stream.Helper.pas';
+  SharedKernel.StreamHelper in 'SharedKernel\SharedKernel.StreamHelper.pas',
+  SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas',
+  SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas';
 
 begin
   try

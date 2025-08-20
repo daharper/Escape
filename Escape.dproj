@@ -200,7 +200,9 @@
         <DCCReference Include="SharedKernel\SharedKernel.Core.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Container.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Stream.pas"/>
-        <DCCReference Include="SharedKernel\SharedKernel.Stream.Helper.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.StreamHelper.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.ObjectHelper.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Reflection.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

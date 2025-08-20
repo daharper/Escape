@@ -1,3 +1,10 @@
+{*******************************************************************************
+  Unit:        SharedKernel.Reflection
+  Purpose:     Helper classes for working with reflection.
+  Author:      David Harper
+  License:     MIT
+  History:     2025-08-20  Initial version
+*******************************************************************************}
 unit SharedKernel.Reflection;
 
 interface
@@ -39,6 +46,15 @@ type
 
     // --- Utility
     class function DefaultOf<T>: T; static; inline;
+    class procedure RequireInterfaceType<T>; static; inline;
+    class function InterfaceGuidOf<T>: TGUID; static; inline;
+    class function &As<T>(const Obj: TObject): T; overload; static; inline;
+    class function &As<T>(const Src: IInterface): T; overload; static; inline;
+
+    class function Implements<T>(const aSource: TObject): Boolean; overload; static; inline;
+    class function Implements<T>(const aSource: TObject; out aTarget: T): Boolean; overload; static; inline;
+    class function Implements<T>(const aSource: IInterface): Boolean; overload; static; inline;
+    class function Implements<T>(const aSource: IInterface; out aTarget: T): Boolean; overload; static; inline;
 
     // --- Interface GUID helper
     class function TryGetInterfaceGuid<T>(out Guid: TGUID): Boolean; static;
@@ -208,6 +224,7 @@ var
   lData: PTypeData;
 begin
   Result := nil;
+
   lInfo := TypeInfoOf<T>;
   if lInfo = nil then Exit;
 
@@ -245,6 +262,67 @@ end;
 class function TReflection.DefaultOf<T>: T;
 begin
   Result := Default(T);
+end;
+
+{------------------------------------------------------------------------------}
+class procedure TReflection.RequireInterfaceType<T>;
+begin
+{$IFDEF DEBUG}
+  if PTypeInfo(TypeInfo(T)).Kind <> tkInterface then
+    raise EInvalidCast.CreateFmt('Implements<%s>: T must be an interface type', [GetTypeName(TypeInfo(T))]);
+{$ENDIF}
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.InterfaceGuidOf<T>: TGUID;
+begin
+  Result := GetTypeData(TypeInfo(T))^.Guid;
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.&As<T>(const Obj: TObject): T;
+begin
+  RequireInterfaceType<T>;
+
+  if not Supports(Obj, InterfaceGuidOf<T>, Result) then
+    raise EInvalidCast.CreateFmt('%s does not implement %s', [Obj.ClassName, GetTypeName(TypeInfo(T))]);
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.&As<T>(const Src: IInterface): T;
+begin
+  RequireInterfaceType<T>;
+
+  if not Supports(Src, InterfaceGuidOf<T>, Result) then
+    raise EIntfCastError.CreateFmt('Interface does not support %s', [GetTypeName(TypeInfo(T))]);
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.Implements<T>(const aSource: TObject): Boolean;
+begin
+  RequireInterfaceType<T>;
+  Result := Supports(aSource, InterfaceGuidOf<T>);
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.Implements<T>(const aSource: TObject; out aTarget: T): Boolean;
+begin
+  RequireInterfaceType<T>;
+  Result := Supports(aSource, InterfaceGuidOf<T>, aTarget);
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.Implements<T>(const aSource: IInterface): Boolean;
+begin
+  RequireInterfaceType<T>;
+  Result := Supports(aSource, InterfaceGuidOf<T>);
+end;
+
+{------------------------------------------------------------------------------}
+class function TReflection.Implements<T>(const aSource: IInterface; out aTarget: T): Boolean;
+begin
+  RequireInterfaceType<T>;
+  Result := Supports(aSource, InterfaceGuidOf<T>, aTarget);
 end;
 
 end.

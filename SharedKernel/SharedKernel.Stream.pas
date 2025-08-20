@@ -1,3 +1,11 @@
+{*******************************************************************************
+  Unit:        SharedKernel.Stream
+  Purpose:     A synchronous Java-like stream for declarative stlye programming.
+  Author:      David Harper
+  License:     MIT
+  History:     2025-08-20  Initial version
+*******************************************************************************}
+
 unit SharedKernel.Stream;
 
 interface
@@ -9,6 +17,10 @@ uses
   SharedKernel.Core;
 
 type
+  TReflectionHelper = class
+
+  end;
+
   Stream<T> = record
   private
     fList: TList<T>;
@@ -34,6 +46,9 @@ type
   end;
 
 implementation
+
+uses
+  System.TypInfo;
 
 { Stream<T> }
 

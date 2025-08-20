@@ -1,3 +1,11 @@
+{*******************************************************************************
+  Unit:        SharedKernel.Core
+  Purpose:     Contains core types and methods used across the SharedKernel.
+  Author:      David Harper
+  License:     MIT
+  History:     2025-08-20  Initial version
+*******************************************************************************}
+
 unit SharedKernel.Core;
 
 interface
@@ -8,8 +16,8 @@ type
   TSingleton = class(TNoRefCountObject);
   TTransient = class(TInterfacedObject);
 
-  TRecPredicate<T: record> = reference to function(const [ref] aRecord: T): Boolean;
-
+  TRefPredicate<T> = reference to function(const [ref] aItem: T): Boolean;
+  TVarPredicate<T> = reference to function(var aItem: T): Boolean;
 
 implementation
 
