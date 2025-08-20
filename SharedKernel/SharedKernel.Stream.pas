@@ -20,7 +20,9 @@ type
     function ToArray: TArray<T>;
 
     { transforming operations }
-    function Filter(aPredicate: TPredicate<T>): Stream<T>;
+
+    function Filter(aPredicate: TPredicate<T>): Stream<T>; overload;
+    function FilterRecord(aPredicate: TRefPredicate<T>): Stream<T>; overload;
 
     { initializing operations }
     class function From(const aItems: TEnumerable<T>): Stream<T>; overload; static;
@@ -43,6 +45,16 @@ end;
 
 {------------------------------------------------------------------------------}
 function Stream<T>.Filter(aPredicate: TPredicate<T>): Stream<T>;
+var
+  lItem: T;
+begin
+  for lItem in fList do
+    if aPredicate(lItem) then
+      Result.fList.Add(lItem);
+end;
+
+{------------------------------------------------------------------------------}
+function Stream<T>.FilterRecord(aPredicate: TRefPredicate<T>): Stream<T>;
 var
   lItem: T;
 begin
