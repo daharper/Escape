@@ -15,14 +15,14 @@ uses
   {$ENDIF }
   DUnitX.TestFramework,
   SharedKernel.StreamFixture in 'SharedKernel.Tests\SharedKernel.StreamFixture.pas',
-  SharedKernel.Container in 'SharedKernel\SharedKernel.Container.pas',
+  SharedKernel.Containers in 'SharedKernel\SharedKernel.Containers.pas',
   SharedKernel.Core in 'SharedKernel\SharedKernel.Core.pas',
-  SharedKernel.Integrity in 'SharedKernel\SharedKernel.Integrity.pas',
-  SharedKernel.StreamHelper in 'SharedKernel\SharedKernel.StreamHelper.pas',
-  SharedKernel.Stream in 'SharedKernel\SharedKernel.Stream.pas',
+  SharedKernel.Streams in 'SharedKernel\SharedKernel.Streams.pas',
   SharedKernel.Mocks.Customer in 'SharedKernel.Mocks\SharedKernel.Mocks.Customer.pas',
   SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas',
-  SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas';
+  SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas',
+  SharedKernel.Collections in 'SharedKernel\SharedKernel.Collections.pas',
+  SharedKernel.XmlParser in 'SharedKernel\SharedKernel.XmlParser.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

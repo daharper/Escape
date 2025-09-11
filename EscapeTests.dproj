@@ -140,14 +140,14 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="SharedKernel.Tests\SharedKernel.StreamFixture.pas"/>
-        <DCCReference Include="SharedKernel\SharedKernel.Container.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Containers.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Core.pas"/>
-        <DCCReference Include="SharedKernel\SharedKernel.Integrity.pas"/>
-        <DCCReference Include="SharedKernel\SharedKernel.StreamHelper.pas"/>
-        <DCCReference Include="SharedKernel\SharedKernel.Stream.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Streams.pas"/>
         <DCCReference Include="SharedKernel.Mocks\SharedKernel.Mocks.Customer.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Reflection.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.ObjectHelper.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Collections.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.XmlParser.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

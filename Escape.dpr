@@ -6,17 +6,20 @@ program Escape;
 
 uses
   System.SysUtils,
-  SharedKernel.Integrity in 'SharedKernel\SharedKernel.Integrity.pas',
   SharedKernel.Core in 'SharedKernel\SharedKernel.Core.pas',
-  SharedKernel.Container in 'SharedKernel\SharedKernel.Container.pas',
-  SharedKernel.Stream in 'SharedKernel\SharedKernel.Stream.pas',
-  SharedKernel.StreamHelper in 'SharedKernel\SharedKernel.StreamHelper.pas',
+  SharedKernel.Containers in 'SharedKernel\SharedKernel.Containers.pas',
+  SharedKernel.Streams in 'SharedKernel\SharedKernel.Streams.pas',
   SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas',
-  SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas';
+  SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas',
+  SharedKernel.Collections in 'SharedKernel\SharedKernel.Collections.pas',
+  SharedKernel.XmlParser in 'SharedKernel\SharedKernel.XmlParser.pas';
 
 begin
+  ReportMemoryLeaksOnShutdown := true;
+
   try
     Writeln('Press any key to continue');
+    Readln;
   except
     on E: Exception do
       Writeln(E.ClassName, ': ', E.Message);

@@ -1,10 +1,10 @@
-{*******************************************************************************
+{***********************************************************************************************************************
   Unit:        SharedKernel.Reflection
   Purpose:     Helper classes for working with reflection.
   Author:      David Harper
   License:     MIT
   History:     2025-08-20  Initial version
-*******************************************************************************}
+***********************************************************************************************************************}
 unit SharedKernel.Reflection;
 
 interface
@@ -28,9 +28,11 @@ type
     class function IsMethod<T>: Boolean; static; inline;     // method pointer
     class function IsPointer<T>: Boolean; static; inline;
     class function IsVariant<T>: Boolean; static; inline;
+    class function IsPrimitive<T>: Boolean; static; inline;
 
     // Managed-type (ref-counted / compiler-managed) check
     class function IsManaged<T>: Boolean; static; inline;
+    class function IsNonOwningSafe<T>: Boolean; static; inline;
     class function NeedsFinalization<T>: Boolean; static; inline;
     class function IsReferenceCounted<T>: Boolean; static; inline;
     class function IsTriviallyCopyable<T>: Boolean; static; inline;
@@ -43,13 +45,16 @@ type
     class function KindOf<T>: TTypeKind; static; inline;
     class function TypeInfoOf<T>: PTypeInfo; static; inline;
     class function TypeNameOf<T>: string; static; inline;
+    class function FullNameOf<T>: string; static; inline;
 
     // --- Utility
     class function DefaultOf<T>: T; static; inline;
-    class procedure RequireInterfaceType<T>; static; inline;
     class function InterfaceGuidOf<T>: TGUID; static; inline;
-    class function &As<T>(const Obj: TObject): T; overload; static; inline;
-    class function &As<T>(const Src: IInterface): T; overload; static; inline;
+
+    class procedure RequireInterfaceType<T>; static; inline;
+
+    class function &As<T>(const aSource: TObject): T; overload; static; inline;
+    class function &As<T>(const aSource: IInterface): T; overload; static; inline;
 
     class function Implements<T>(const aSource: TObject): Boolean; overload; static; inline;
     class function Implements<T>(const aSource: TObject; out aTarget: T): Boolean; overload; static; inline;
@@ -68,97 +73,112 @@ implementation
 uses
   System.SysUtils;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.TypeInfoOf<T>: PTypeInfo;
 begin
   Result := System.TypeInfo(T);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.TypeNameOf<T>: string;
 begin
   Result := GetTypeName(TypeInfoOf<T>);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.KindOf<T>: TTypeKind;
 begin
   Result := TypeInfoOf<T>.Kind;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsInterface<T>: Boolean;
 begin
   Result := KindOf<T> = tkInterface;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsClass<T>: Boolean;
 begin
   Result := KindOf<T> = tkClass;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsClassRef<T>: Boolean;
 begin
   Result := KindOf<T> = tkClassRef;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsRecord<T>: Boolean;
 begin
   Result := KindOf<T> = tkRecord;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsOrdinal<T>: Boolean;
 begin
   Result := KindOf<T> in [tkInteger, tkInt64, tkChar, tkWChar, tkEnumeration, tkSet];
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsFloat<T>: Boolean;
 begin
   Result := KindOf<T> = tkFloat;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsString<T>: Boolean;
 begin
   Result := KindOf<T> in [tkString, tkLString, tkWString, tkUString];
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsArray<T>: Boolean;
 begin
   Result := KindOf<T> = tkArray;    // static (fixed-length) array
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsDynArray<T>: Boolean;
 begin
   Result := KindOf<T> = tkDynArray;  // dynamic array
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsMethod<T>: Boolean;
 begin
   Result := KindOf<T> = tkMethod;    // method pointers (of object)
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsPointer<T>: Boolean;
 begin
   Result := KindOf<T> = tkPointer;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsVariant<T>: Boolean;
 begin
   Result := KindOf<T> = tkVariant;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
+class function TReflection.IsPrimitive<T>: Boolean;
+begin
+  case PTypeInfo(TypeInfo(T)).Kind of
+    tkInteger, tkInt64, tkEnumeration, tkSet,
+    tkChar, tkWChar,
+    tkFloat,
+    tkPointer,
+    tkString:
+      Result := True;
+  else
+      Result := False;
+  end;
+end;
+
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsManaged<T>: Boolean;
 begin
   // Prefer the RTL’s own test when available (it also detects records with managed fields)
@@ -170,7 +190,19 @@ begin
   {$IFEND}
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
+class function TReflection.IsNonOwningSafe<T>: Boolean;
+begin
+  case PTypeInfo(TypeInfo(T)).Kind of
+    tkClass,   // TObject refs (need .Free if you own them)
+    tkPointer: // raw pointers (need Dispose/FreeMem if you own them)
+      Result := False;
+  else
+      Result := True;
+  end;
+end;
+
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.TryGetInterfaceGuid<T>(out Guid: TGUID): Boolean;
 var
   lInfo: PTypeInfo;
@@ -191,13 +223,13 @@ begin
   end;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.NeedsFinalization<T>: Boolean;
 begin
   Result := IsManaged<T>;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsReferenceCounted<T>: Boolean;
 begin
   // Things the compiler/RTL refcount: interfaces, Unicode/Ansi/Wide strings, dyn arrays.
@@ -210,14 +242,14 @@ begin
   end;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.IsTriviallyCopyable<T>: Boolean;
 begin
   // Safe for Move/memcpy and no Finalize needed
   Result := not IsManaged<T>;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.ElementTypeInfo<T>: PTypeInfo;
 var
   lInfo: PTypeInfo;
@@ -245,7 +277,7 @@ begin
   end;
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.ElementTypeName<T>: string;
 var
   lInfo: PTypeInfo;
@@ -258,13 +290,13 @@ begin
     Result := '';
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.DefaultOf<T>: T;
 begin
   Result := Default(T);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class procedure TReflection.RequireInterfaceType<T>;
 begin
 {$IFDEF DEBUG}
@@ -273,56 +305,78 @@ begin
 {$ENDIF}
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.InterfaceGuidOf<T>: TGUID;
 begin
   Result := GetTypeData(TypeInfo(T))^.Guid;
 end;
 
-{------------------------------------------------------------------------------}
-class function TReflection.&As<T>(const Obj: TObject): T;
+{--------------------------------------------------------------------------------------------------}
+class function TReflection.&As<T>(const aSource: TObject): T;
 begin
   RequireInterfaceType<T>;
 
-  if not Supports(Obj, InterfaceGuidOf<T>, Result) then
-    raise EInvalidCast.CreateFmt('%s does not implement %s', [Obj.ClassName, GetTypeName(TypeInfo(T))]);
+  if not Supports(aSource, InterfaceGuidOf<T>, Result) then
+    raise EInvalidCast.CreateFmt('%s does not implement %s', [aSource.ClassName, GetTypeName(TypeInfo(T))]);
 end;
 
-{------------------------------------------------------------------------------}
-class function TReflection.&As<T>(const Src: IInterface): T;
+{--------------------------------------------------------------------------------------------------}
+class function TReflection.&As<T>(const aSource: IInterface): T;
 begin
   RequireInterfaceType<T>;
 
-  if not Supports(Src, InterfaceGuidOf<T>, Result) then
+  if not Supports(aSource, InterfaceGuidOf<T>, Result) then
     raise EIntfCastError.CreateFmt('Interface does not support %s', [GetTypeName(TypeInfo(T))]);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.Implements<T>(const aSource: TObject): Boolean;
 begin
   RequireInterfaceType<T>;
   Result := Supports(aSource, InterfaceGuidOf<T>);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.Implements<T>(const aSource: TObject; out aTarget: T): Boolean;
 begin
   RequireInterfaceType<T>;
   Result := Supports(aSource, InterfaceGuidOf<T>, aTarget);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.Implements<T>(const aSource: IInterface): Boolean;
 begin
   RequireInterfaceType<T>;
   Result := Supports(aSource, InterfaceGuidOf<T>);
 end;
 
-{------------------------------------------------------------------------------}
+{--------------------------------------------------------------------------------------------------}
 class function TReflection.Implements<T>(const aSource: IInterface; out aTarget: T): Boolean;
 begin
   RequireInterfaceType<T>;
   Result := Supports(aSource, InterfaceGuidOf<T>, aTarget);
+end;
+
+{--------------------------------------------------------------------------------------------------}
+class function TReflection.FullNameOf<T>: string;
+var
+  lInfo: PTypeInfo;
+  lData: PTypeData;
+  lUnit : string;
+begin
+  lInfo := TypeInfo(T);
+  Result := GetTypeName(lInfo);
+  lData := GetTypeData(lInfo);
+
+  case lInfo.Kind of
+    tkClass, tkInterface, tkRecord:
+      lUnit := string(lData.UnitName);
+  else
+      lUnit := '';
+  end;
+
+  if lUnit <> '' then
+    Result := lUnit + '.' + Result;
 end;
 
 end.

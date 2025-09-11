@@ -1,0 +1,523 @@
+{***********************************************************************************************************************
+  Unit:        SharedKernel.Container
+  Purpose:     A simple DI Container.
+  Author:      David Harper
+  License:     MIT
+  History:     2025-08-20  Initial version
+***********************************************************************************************************************}
+unit SharedKernel.Containers;
+
+interface
+
+uses
+  System.Generics.Collections,
+  System.TypInfo,
+  System.Rtti,
+  SharedKernel.Core;
+
+type
+
+  /// <summary>
+  /// To simplify memory management the container relies owning the instance (TSingleton) or reference
+  /// counting (TTransient). Therefore, the basic contract is that:
+  ///   - providers implement either TSingleton or TTransient
+  ///   - provivers are registered against an interface
+  ///   - the user should never free a type returned from the container (use and forget)
+  ///   - the user should always use interfaces when receiving a provider
+  /// To improve performance, types and interfaces are filtered and cached during initialization.
+  /// The RegisterAttribute enables variability in registration.
+  /// </summary>
+  /// <example>
+  /// Example registration from a current project in development:
+  ///
+  ///  Container.AddServices([
+  ///    TGameSession,
+  ///    TWorldBuilder,
+  ///    TWorldEngine,
+  ///    TClassificationProfile,
+  ///    TTextParser,
+  ///    TConsole,
+  ///    TConsolePlayerPresenter,
+  ///    TConsoleWorldPresenter
+  ///  ]);
+  ///
+  /// Example service receiving injection via constructors:
+  ///
+  /// constructor TConsole.Create(
+  ///   aParser: ITextParser;
+  ///   aPlayerPresenter: IPlayerPresenter;
+  ///   aWorldPresenter: IWorldPresenter;
+  ///   aStartGameUseCase: IStartGameUseCase;
+  ///   aDispatcher: ICommandDispatcher;
+  ///   aWorldEngine: IWorldEngine);
+  ///
+  /// <example>
+  TContainer = class
+  private
+    fContext:      TRttiContext;
+    fCache:        TList<TRttiType>;
+    fProviders:    TDictionary<TGuid, TRttiType>;
+    fSingletons:   TObjectDictionary<TGuid, TObject>;
+    fInterfaceMap: TDictionary<TGUID, TRttiType>;
+
+    function RegisterType<TService, TProvider>: TGuid;
+    function Resolve(const [ref] aType: TRttiType): TValue;
+    function ClassImplements<TService>(AClass: TClass): Boolean;
+    function AllParamsAreInterfaces(const [ref] aMethod: TRttiMethod): boolean;
+
+    procedure Initialize;
+  public
+    function Get<TService:IInterface>: TService; overload;
+    function Get<TService:IInterface>(aGuid: TGuid): TService; overload;
+    function Get<TService:IInterface>(aClass: TClass): TService; overload;
+
+    procedure AddSingleton<TService:IInterface; TProvider:TSingleton>; overload;
+    procedure AddSingleton<TService:IInterface; TProvider:TSingleton>(aInstance: TProvider); overload;
+    procedure Add<TService: IInterface; TProvider:TTransient>;
+    procedure AddService(aInterfaceGuid: TGuid; aProvider:TClass);
+    procedure AddServices(aServices: array of TClass);
+    procedure RemoveSingleton<TService:IInterface>; overload;
+
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  /// <summary>
+  /// A singleton container, used for the universal application container.
+  /// </summary>
+  TSingleContainer = class
+  class var
+    fInstance: TContainer;
+  public
+    class constructor Create;
+    class destructor Destroy;
+  end;
+
+  /// <summary>
+  /// Global function providing simple access to the universal container.
+  /// </summary>
+  function Container: TContainer;
+
+implementation
+
+uses
+  System.StrUtils,
+  System.SysUtils,
+  System.Variants,
+  System.Generics.Defaults,
+  SharedKernel.Streams;
+
+{ Functions }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function Container: TContainer;
+begin
+  Result := TSingleContainer.fInstance;
+end;
+
+{ TContainer }
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.RegisterType<TService, TProvider>: TGuid;
+var
+  lType: TRttiType;
+  lGuid: TGuid;
+begin
+  lType := fContext.GetType(TypeInfo(TService));
+  lGuid := GetTypeData(lType.Handle)^.Guid;
+  lType := fContext.GetType(TypeInfo(TProvider));
+
+  fProviders.AddOrSetValue(lGuid, lType);
+
+  Result := lGuid;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.Initialize;
+var
+  lType: TRttiType;
+  lRttiClass: TRttiInstanceType;
+  lClass: TClass;
+begin
+  for lType in fContext.GetTypes do
+  begin
+    { build up interface map }
+    if lType is TRttiInterfaceType then
+    begin
+      { TODO -oDavid -cTechnical Debt : Improve namespace filtering and make argument based }
+      if not ((lType is TRttiInterfaceType) and
+             ((lType.QualifiedName.StartsWith('Domain.') or
+             (lType.QualifiedName.StartsWith('Application.'))))) then continue;
+
+      fInterfaceMap.AddOrSetValue(TRttiInterfaceType(lType).GUID, lType);
+      continue;
+    end;
+
+    if lType.TypeKind <> tkClass then continue;
+    if not (lType is TRttiInstanceType) then continue;
+
+    { build up class cache }
+    lRttiClass := TRttiInstanceType(lType);
+    lClass := lRttiClass.MetaclassType;
+
+    if lClass.ClassNameIs('TSingleton') or lClass.ClassNameIs('TTransient') then continue;
+
+    if lClass.InheritsFrom(TTransient) or lClass.InheritsFrom(TSingleton) then
+    begin
+      fCache.Add(lType);
+    end;
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.RemoveSingleton<TService>;
+var
+  lType: TRttiType;
+  lGuid: TGuid;
+begin
+  lType := fContext.GetType(TypeInfo(TService));
+  lGuid := GetTypeData(lType.Handle)^.Guid;
+
+  if not fSingletons.ContainsKey(lGuid) then exit;
+
+  if Assigned(fSingletons[lGuid]) then
+    fSingletons[lGuid].Free;
+
+  fSingletons.Remove(lGUid);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.Add<TService, TProvider>;
+begin
+  RegisterType<TService, TProvider>;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddSingleton<TService, TProvider>;
+const
+  ALREADY_REGISTERED = 'singleton has already been registered';
+var
+  lGuid: TGuid;
+begin
+  lGuid := RegisterType<TService, TProvider>;
+
+  Expect.IsFalse(fSingletons.ContainsKey(lGuid), ALREADY_REGISTERED);
+
+  fSingletons.Add(lGuid, nil);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddService(aInterfaceGuid: TGuid; aProvider: TClass);
+const
+  REG_ERROR = 'Service has already been registered: %s';
+  SINGLETON_ERROR = 'A singleton exists for this service, unable to register: %s';
+var
+  lType: TRTTIType;
+begin
+  lType := fContext.GetType(aProvider);
+
+  Expect.IsFalse(fProviders.ContainsKey(aInterfaceGuid), Format(REG_ERROR, [aProvider.ClassName]));
+
+  if ClassImplements<TSingleton>(aProvider) then
+  begin
+    Expect.IsFalse(fSingletons.ContainsKey(aInterfaceGuid), Format(SINGLETON_ERROR, [aProvider.ClassName]));
+    fSingletons.Add(aInterfaceGuid, nil);
+  end;
+
+  fProviders.Add(aInterfaceGuid, lType);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddServices(aServices: array of TClass);
+const
+  REG_ERROR          = 'Service has already been registered: %s';
+  SINGLETON_ERROR    = 'A singleton exists for this service, unable to register: %s';
+  ATTR_ERROR         = '%s is missing [TRegister] attribute for registration.';
+  MISSING_IFCE_ERROR = 'cannot find an interface for: %s';
+  IMPL_ERROR         = '%s does not implement interface %s';
+var
+  lType:       TRttiType;
+  lInstance:   TRttiInstanceType;
+  lGuid:       TGuid;
+  lService:    TClass;
+  lName:       string;
+  lAttr:       TRegisterAttribute;
+  lIsProvider: boolean;
+begin
+  for lService in aServices do
+  begin
+    lType     := fContext.GetType(lService);
+    lAttr     := lType.GetAttribute<TRegisterAttribute>;
+    lInstance := lType.AsInstance;
+    lName     := lService.ClassName;
+
+    if not Assigned(lAttr) then
+    begin
+      { we have don't have an attribute, let's search the cache for a provider for the first suitable interface }
+
+      lGuid := Stream<TRttiInterfaceType>
+        .From(lInstance.GetImplementedInterfaces)
+        .Map<TGuid>(function(const i: TRttiInterfaceType):TGuid begin Result := i.GUID; end)
+        .First;
+
+      lIsProvider := false;
+
+      for lType in fCache do
+      begin
+        lInstance := lType.AsInstance;
+
+        lIsProvider := Stream<TRttiInterfaceType>
+          .From(lInstance.GetImplementedInterfaces)
+          .AnyMatch(function(const i: TRttiInterfaceType): boolean begin Result := i.GUID = lGUID; end);
+
+         if lIsProvider then break;
+      end;
+
+      Expect.IsTrue(lIsProvider, Format(IMPL_ERROR, [lName, GUIDToString(lGuid)]));
+    end
+    else
+    begin
+      { otherwise, let's match the attribute }
+
+      lGuid := lAttr.InterfaceGUID;
+
+      Expect.IsFalse(fProviders.ContainsKey(lGuid), Format(REG_ERROR, [lName]));
+
+      if lAttr.IsByForce then
+        Expect.IsTrue(fInterfaceMap.ContainsKey(lGuid), Format(MISSING_IFCE_ERROR, [lName]))
+      else
+      begin
+        lIsProvider := Stream<TRttiInterfaceType>
+          .From(lInstance.GetImplementedInterfaces)
+          .AnyMatch(function(const i: TRttiInterfaceType): boolean begin Result := i.GUID = lAttr.InterfaceGUID; end);
+
+        Expect.IsTrue(lIsProvider, Format(IMPL_ERROR, [lName, GUIDToString(lGuid)]));
+      end;
+    end;
+
+    if lService.InheritsFrom(TSingleton) then
+    begin
+      Expect.IsFalse(fSingletons.ContainsKey(lGUID), Format(SINGLETON_ERROR, [lName]));
+      fSingletons.Add(lGUID, nil);
+    end;
+
+    fProviders.Add(lGUID, lType);
+  end;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TContainer.AddSingleton<TService, TProvider>(aInstance: TProvider);
+const
+  ALREADY_REGISTERED = 'singleton has already been registered';
+var
+  lGuid: TGuid;
+begin
+  lGuid := RegisterType<TService, TProvider>;
+
+  Expect.IsFalse(fSingletons.ContainsKey(lGuid), ALREADY_REGISTERED);
+
+  fSingletons.Add(lGuid, aInstance);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.Get<TService>(aClass: TClass): TService;
+var
+  lType:  TRttiType;
+  lValue: TValue;
+begin
+  lType  := fContext.GetType(aClass);
+  lValue := Resolve(lType);
+  Result := lValue.AsType<TService>;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.Get<TService>(aGuid: TGuid): TService;
+const
+  IFCE_NOT_FOUND = 'interface not found: %s';
+var
+  lType: TRttiType;
+  lValue: TValue;
+begin
+  Expect.IsTrue(fInterfaceMap.ContainsKey(aGuid), Format(IFCE_NOT_FOUND, [GUIDToString(aGuid)]));
+
+  lType  := fInterfaceMap[aGuid];
+  lValue := Resolve(lType);
+  Result := lValue.AsType<TService>;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.Get<TService>: TService;
+var
+  lType:    TRttiType;
+  lValue:   TValue;
+begin
+  lType  := fContext.GetType(TypeInfo(TService));
+  lValue := Resolve(lType);
+  Result := lValue.AsType<TService>;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.Resolve(const [ref] aType: TRttiType): TValue;
+const
+  PROVIDER_ERROR = 'Unable to find a provider for: ';
+var
+  lType: TRttiType;
+  lName: string;
+  lValue: TValue;
+  lRttiClass: TRttiInstanceType;
+  lInstance: TRttiInstanceType;
+  lGuid: TGuid;
+  lIsProvider: boolean;
+  lMethod: TRttiMethod;
+  lConstructor: TRttiMethod;
+  lCount: integer;
+  lParameters: TArray<TRttiParameter>;
+  lValues: TArray<TValue>;
+begin
+  lType := aType;
+
+  if lType.TypeKind <> tkClass then
+  begin
+    lName := lType.QualifiedName;
+    lGuid := GetTypeData(lType.Handle)^.Guid;
+
+    if (fSingletons.ContainsKey(lGuid)) and (Assigned(fSingletons[lGuid])) then
+      exit(fSingletons[lGuid]);
+
+    lIsProvider := fProviders.ContainsKey(lGuid);
+
+    if lIsProvider then
+      lType := fProviders[lGuid]
+    else
+    begin
+      for lType in fCache do
+      begin
+        if not (lType is TRttiInstanceType) then continue;
+
+        lRttiClass := lType as TRttiInstanceType;
+
+        lIsProvider := Stream<TRttiInterfaceType>
+          .From(lRttiClass.GetImplementedInterfaces)
+          .AnyMatch(function(const i: TRttiInterfaceType): boolean begin Result := i.GUID = lGuid; end);
+
+        if lIsProvider then
+        begin
+          fProviders.Add(lGuid, lType);
+          break;
+        end;
+      end;
+
+      Expect.IsTrue(lIsProvider, PROVIDER_ERROR + lName);
+    end;
+  end;
+
+  lInstance := lType.AsInstance;
+
+  if not (lType is TRttiInstanceType) then
+   lConstructor := lInstance.GetMethod('Create')
+  else
+  begin
+    lConstructor := Stream<TRttiMethod>
+       .From(lInstance.GetDeclaredMethods)
+       .Filter(function(const m: TRttiMethod): boolean
+          begin
+            Result := (m.IsConstructor) and (m.Visibility = mvPublic) and (m.Parent = lType);
+          end)
+        .Filter(function(const m: TRttiMethod): boolean
+          begin
+            Result := AllParamsAreInterfaces(m)
+          end)
+        .FirstOr(lInstance.GetMethod('Create'));
+  end;
+
+  lParameters := lConstructor.GetParameters;
+
+  if Length(lParameters) = 0 then
+    lValues := []
+  else
+  begin
+    lValues := Stream<TRttiParameter>.From(lConstructor.GetParameters)
+      .Map<TValue>(function(const p: TRttiParameter): TValue
+        begin
+          Result := Resolve(p.ParamType)
+        end)
+      .ToArray;
+  end;
+
+  lValue := lConstructor.Invoke(lInstance.MetaclassType, lValues);
+
+  if lInstance.MetaclassType.InheritsFrom(TSingleton) then
+    fSingletons.AddOrSetValue(lGuid, lValue.AsObject);
+
+  Result := lValue;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.AllParamsAreInterfaces(const [ref] aMethod: TRttiMethod): boolean;
+var
+  lParam: TRttiParameter;
+  lParams: TArray<TRttiParameter>;
+begin
+  lParams := aMethod.GetParameters;
+
+  if Length(lParams) = 0 then exit(false);
+
+  for lParam in lParams do
+  begin
+    if not Assigned(lParam.ParamType) then exit(false);
+    if lParam.ParamType.TypeKind <> tkInterface then exit(false);
+  end;
+
+  Result := true;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+function TContainer.ClassImplements<TService>(AClass: TClass): Boolean;
+var
+  lType: TRTTIType;
+  lRttiClass: TRttiInstanceType;
+  lGuid: TGuid;
+begin
+  lType      := fContext.GetType(TypeInfo(TService));
+  lGuid      := GetTypeData(lType.Handle)^.Guid;
+  lRttiClass := fContext.GetType(AClass) as TRttiInstanceType;
+
+  Result := Stream<TRttiInterfaceType>
+    .From(lRttiClass.GetImplementedInterfaces)
+    .AnyMatch(function(const i: TRttiInterfaceType): boolean begin Result := i.GUID = lGuid; end);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+constructor TContainer.Create;
+begin
+  fCache        := TList<TRttiType>.Create;
+  fInterfaceMap := TDictionary<TGUID, TRttiType>.Create;
+  fProviders    := TDictionary<TGuid, TRttiType>.Create;
+  fSingletons   := TObjectDictionary<TGuid, TObject>.Create([doOwnsValues]);
+
+  Initialize;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+destructor TContainer.Destroy;
+begin
+  fCache.Free;
+  fInterfaceMap.Free;
+  fProviders.Free;
+  fSingletons.Free;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class constructor TSingleContainer.Create;
+begin
+  fInstance := TContainer.Create;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class destructor TSingleContainer.Destroy;
+begin
+  FreeAndNil(fInstance);
+end;
+
+end.
+

@@ -17,6 +17,8 @@ type
     procedure Should_Initialize_From_Array(const aItems: array of integer);
 
     [Test] procedure Should_Initialize_From_Enumerator;
+    [Test] procedure Should_Initialize_Using_Classes;
+    [Test] procedure Should_Initialize_From_Class_Instances;
 
     { terminating operation tests}
     [Test]
@@ -36,7 +38,7 @@ uses
   System.Character,
   System.Generics.Collections,
   System.Generics.Defaults,
-  SharedKernel.Stream,
+  SharedKernel.Streams,
   SharedKernel.Mocks.Customer;
 
 { TStreamFixture }
@@ -55,7 +57,7 @@ procedure TStreamFixture.Should_Filter_Items;
 begin
   var nums := Stream<integer>
     .From([1, 2, 3, 4, 5])
-    .Filter(function(num: integer): boolean begin Result := num mod 2 = 0; end)
+    .Filter(function(const num: integer): boolean begin Result := num mod 2 = 0; end)
     .ToArray;
 
   Assert.AreEqual(2, Length(nums));
@@ -71,7 +73,7 @@ begin
         TCustomer.Create(1, 'Alan',  'IT', 10),
         TCustomer.Create(2, 'Roger', 'IT', 20),
         TCustomer.Create(3, 'Osin',  'Support', 15)])
-    .FilterRecord(function(const [ref] c: TCustomer): boolean
+    .Filter(function(const c: TCustomer): boolean
       begin
         Result := c.Salary > 10;
       end)
@@ -110,6 +112,38 @@ begin
   Assert.AreEqual('Kotlin', items[2]);
 
   languages.Free;
+end;
+
+{------------------------------------------------------------------------------}
+procedure TStreamFixture.Should_Initialize_From_Class_Instances;
+begin
+  var wrapper := TCustomerWrapper.Create(1, 'Alan',  'IT', 10);
+
+  Assert.WillNotRaise(
+    procedure
+    begin
+      var customers := Stream<TCustomerWrapper>
+        .From([wrapper])
+        .ToArray;
+    end,
+    nil, 'Object/pointers are not allowed');
+
+  wrapper.Free;
+end;
+
+{------------------------------------------------------------------------------}
+procedure TStreamFixture.Should_Initialize_Using_Classes;
+begin
+ Assert.WillNotRaise(
+    procedure
+    begin
+      Stream<TCustomerWrapper>
+        .From([
+            TCustomerWrapper.Create(1, 'Alan',  'IT', 10),
+            TCustomerWrapper.Create(2, 'Roger', 'IT', 20),
+            TCustomerWrapper.Create(3, 'Osin',  'Support', 15)])
+        .FreeAll;
+    end);
 end;
 
 {$endregion}
