@@ -12,7 +12,9 @@ uses
   SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas',
   SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas',
   SharedKernel.Collections in 'SharedKernel\SharedKernel.Collections.pas',
-  SharedKernel.XmlParser in 'SharedKernel\SharedKernel.XmlParser.pas';
+  SharedKernel.XmlParser in 'SharedKernel\SharedKernel.XmlParser.pas',
+  SharedKernel.Enumerable in 'SharedKernel\SharedKernel.Enumerable.pas',
+  SharedKernel.Properties in 'SharedKernel\SharedKernel.Properties.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := true;

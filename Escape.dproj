@@ -203,6 +203,8 @@
         <DCCReference Include="SharedKernel\SharedKernel.Reflection.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Collections.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.XmlParser.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Enumerable.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Properties.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
