@@ -29,9 +29,27 @@ type
       aCleanupSource: boolean = true): TObjectDictionary<T,V>; static;
 
      /// <summary>
-     /// Copies an enumerable to an array.
+     /// Adapts a list to a dictionary, optionally frees the list.
+     /// If a comparer is specified it will use that, otherwise the default.
      /// </summary>
-     /// <remarks>If you know the count, then it is more efficient to provide it.</remarks>
+    class function ToMap<T, V>(var aSource: TList<TPair<T, V>>; const aFreeSource: boolean = false; aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
+
+    /// <summary>
+    /// Adapts a list to a dictionary, using the factory to generate values for the keys.
+    /// Optionally frees the list. If a comparer is specified it will use that, otherwise the default.
+    /// </summary>
+    class function ToMap<T, V>(var aSource: TList<T>; aFactory: TConstFunc<T, V>; const aFreeSource: boolean = false; aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
+
+    /// <summary>
+    /// Adapts a list to a dictionary, using the factory to generate key/value pairs.
+    /// Optionally frees the list. If a comparer is specified it will use that, otherwise the default.
+    /// </summary>
+    class function ToMap<T, K, V>(var aSource: TList<T>; aFactory: TConstFunc<T, TPair<K, V>>; const aFreeSource: boolean = false; aComparer: IEqualityComparer<K> = nil): TDictionary<K, V>; overload; static;
+
+    /// <summary>
+    /// Copies an enumerable to an array.
+    /// </summary>
+    /// <remarks>If you know the count, then it is more efficient to provide it.</remarks>
     class function ToArray<T>(const aSource: TEnumerable<T>; aCount: integer = -1): TArray<T>; static;
 
     /// <summary>
@@ -71,6 +89,8 @@ uses
   System.Math,
   System.IOUtils,
   SharedKernel.Reflection;
+
+{ TCollections }
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollections.Range(aStart, aEnd, aStep: integer): TArray<integer>;
@@ -223,7 +243,69 @@ begin
   end;
 end;
 
-{ TCollections }
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollections.ToMap<T, V>(
+  var aSource: TList<TPair<T, V>>;
+  const aFreeSource: boolean;
+  aComparer: IEqualityComparer<T>): TDictionary<T, V>;
+var
+  lPair: TPair<T, V>;
+begin
+  if not Assigned(aComparer) then
+    aComparer := TEqualityComparer<T>.Default;
+
+  Result := TDictionary<T, V>.Create(aComparer);
+
+  for lPair in aSource do
+    Result.AddOrSetValue(lPair.Key, lPair.Value);
+
+  if aFreeSource then
+    FreeAndNil(aSource);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollections.ToMap<T, V>(
+  var aSource: TList<T>; aFactory: TConstFunc<T, V>;
+  const aFreeSource: boolean;
+  aComparer: IEqualityComparer<T>): TDictionary<T, V>;
+var
+  lItem: T;
+begin
+  if not Assigned(aComparer) then
+    aComparer := TEqualityComparer<T>.Default;
+
+  Result := TDictionary<T, V>.Create(aComparer);
+
+  for lItem in aSource do
+    Result.AddOrSetValue(lItem, aFactory(lItem));
+
+  if aFreeSource then
+    FreeAndNil(aSource);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollections.ToMap<T, K, V>(
+  var aSource: TList<T>; aFactory: TConstFunc<T, TPair<K, V>>;
+  const aFreeSource: boolean;
+  aComparer: IEqualityComparer<K>): TDictionary<K, V>;
+var
+  lItem: T;
+  lPair: TPair<K, V>;
+begin
+  if not Assigned(aComparer) then
+    aComparer := TEqualityComparer<K>.Default;
+
+  Result := TDictionary<K, V>.Create(aComparer);
+
+  for lItem in aSource do
+  begin
+    lPair := aFactory(lItem);
+    Result.Add(lPair.Key, lPair.Value);
+  end;
+
+  if aFreeSource then
+    FreeAndNil(aSource);
+end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollections.ToObjectDictionary<T, V>(
