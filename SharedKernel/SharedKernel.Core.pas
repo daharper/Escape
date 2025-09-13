@@ -34,10 +34,10 @@ type
   TConstProc<T1,T2,T3> = reference to procedure (const Arg1: T1; const Arg2: T2; const Arg3: T3);
   TConstProc<T1,T2,T3,T4> = reference to procedure (const Arg1: T1; const Arg2: T2; const Arg3: T3; const Arg4: T4);
 
-  TConstFunc<T,TResult> = reference to function (const Arg1: T): TResult;
-  TConstFunc<T1,T2,TResult> = reference to function (const Arg1: T1; const Arg2: T2): TResult;
-  TConstFunc<T1,T2,T3,TResult> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3): TResult;
-  TConstFunc<T1,T2,T3,T4,TResult> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3; const Arg4: T4): TResult;
+  TConstFunc<T,R> = reference to function (const Arg1: T): R;
+  TConstFunc<T1,T2,R> = reference to function (const Arg1: T1; const Arg2: T2): R;
+  TConstFunc<T1,T2,T3,R> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3): R;
+  TConstFunc<T1,T2,T3,T4,R> = reference to function (const Arg1: T1; const Arg2: T2; const Arg3: T3; const Arg4: T4): R;
 
   { for efficiently working with records }
   TConstRefProc<T: record> = reference to procedure (const [ref] Arg1: T);
@@ -45,10 +45,10 @@ type
   TConstRefProc<T1,T2,T3: record> = reference to procedure (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3);
   TConstRefProc<T1,T2,T3,T4: record> = reference to procedure (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3; const [ref] Arg4: T4);
 
-  TConstRefFunc<T:record; TResult> = reference to function (const [ref] Arg1: T): TResult;
-  TConstRefFunc<T1,T2: record; TResult> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2): TResult;
-  TConstRefFunc<T1,T2,T3: record; TResult> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3): TResult;
-  TConstRefFunc<T1,T2,T3,T4: record; TResult> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3; const [ref] Arg4: T4): TResult;
+  TConstRefFunc<T:record; R> = reference to function (const [ref] Arg1: T): R;
+  TConstRefFunc<T1,T2: record; R> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2): R;
+  TConstRefFunc<T1,T2,T3: record; R> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3): R;
+  TConstRefFunc<T1,T2,T3,T4: record; R> = reference to function (const [ref] Arg1: T1; const [ref] Arg2: T2; const [ref] Arg3: T3; const [ref] Arg4: T4): R;
 
   { used for managing local references, avoids try/finally/free blocks }
   TScope = record

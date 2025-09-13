@@ -14,7 +14,7 @@ uses
   DUnitX.Loggers.Console,
   {$ENDIF }
   DUnitX.TestFramework,
-  SharedKernel.StreamFixture in 'SharedKernel.Tests\SharedKernel.StreamFixture.pas',
+  SharedKernel.Tests.StreamsFixture in 'SharedKernel.Tests\SharedKernel.Tests.StreamsFixture.pas',
   SharedKernel.Containers in 'SharedKernel\SharedKernel.Containers.pas',
   SharedKernel.Core in 'SharedKernel\SharedKernel.Core.pas',
   SharedKernel.Streams in 'SharedKernel\SharedKernel.Streams.pas',
@@ -22,7 +22,10 @@ uses
   SharedKernel.Reflection in 'SharedKernel\SharedKernel.Reflection.pas',
   SharedKernel.ObjectHelper in 'SharedKernel\SharedKernel.ObjectHelper.pas',
   SharedKernel.Collections in 'SharedKernel\SharedKernel.Collections.pas',
-  SharedKernel.XmlParser in 'SharedKernel\SharedKernel.XmlParser.pas';
+  SharedKernel.XmlParser in 'SharedKernel\SharedKernel.XmlParser.pas',
+  SharedKernel.Enumerable in 'SharedKernel\SharedKernel.Enumerable.pas',
+  SharedKernel.Properties in 'SharedKernel\SharedKernel.Properties.pas',
+  SharedKernel.Tests.CollectionsFixture in 'SharedKernel.Tests\SharedKernel.Tests.CollectionsFixture.pas';
 
 { keep comment here to protect the following conditional from being removed by the IDE when adding a unit }
 {$IFNDEF TESTINSIGHT}

@@ -40,10 +40,11 @@ type
     procedure Add(const aItems: array of T); overload;
     procedure Add(const aItems: TEnumerable<T>); overload;
 
-    class operator Initialize;
-    class operator Finalize;
-    class operator Assign(var Dest: Enumerable<T>; const [ref] Src: Enumerable<T>);
+    class operator Initialize(out aDest: Enumerable<T>);
+    class operator Finalize(var aDest: Enumerable<T>);
+    class operator Assign(var aDest: Enumerable<T>; const [ref] aSrc: Enumerable<T>);
   end;
+
 
 implementation
 
@@ -100,40 +101,40 @@ begin
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator Enumerable<T>.Initialize;
+class operator Enumerable<T>.Initialize(out aDest: Enumerable<T>);
 begin
-  fList := TList<T>.Create;
-  fOwnsList := true;
+  aDest.fList := TList<T>.Create;
+  aDest.fOwnsList := true;
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator Enumerable<T>.Assign(var Dest: Enumerable<T>; const [ref] Src: Enumerable<T>);
+class operator Enumerable<T>.Assign(var aDest: Enumerable<T>; const [ref] aSrc: Enumerable<T>);
 var
   lDisposeList: boolean;
 begin
-  lDisposeList := Assigned(Dest.fList);
+  lDisposeList := Assigned(aDest.fList);
 
   if not lDisposeList then
-      Dest.fList := Src.fList
+      aDest.fList := aSrc.fList
   else
   begin
-    Dest.fList.AddRange(Src.fList);
-    Src.fList.Clear;
+    aDest.fList.AddRange(aSrc.fList);
+    aSrc.fList.Clear;
   end;
 
-  Src.ReleaseOwnership(lDisposeList);
+  aSrc.ReleaseOwnership(lDisposeList);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class operator Enumerable<T>.Finalize;
+class operator Enumerable<T>.Finalize(var aDest: Enumerable<T>);
 begin
-  if fOwnsList then
+  if aDest.fOwnsList then
   begin
-    TCollections.FreeAll<T>(fList);
-    fList.Free;
+    TCollections.FreeAll<T>(aDest.fList);
+    aDest.fList.Free;
   end;
 
-  fList := nil;
+  aDest.fList := nil;
 end;
 
 end.

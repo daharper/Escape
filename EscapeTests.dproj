@@ -139,7 +139,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="SharedKernel.Tests\SharedKernel.StreamFixture.pas"/>
+        <DCCReference Include="SharedKernel.Tests\SharedKernel.Tests.StreamsFixture.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Containers.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Core.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Streams.pas"/>
@@ -148,6 +148,9 @@
         <DCCReference Include="SharedKernel\SharedKernel.ObjectHelper.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.Collections.pas"/>
         <DCCReference Include="SharedKernel\SharedKernel.XmlParser.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Enumerable.pas"/>
+        <DCCReference Include="SharedKernel\SharedKernel.Properties.pas"/>
+        <DCCReference Include="SharedKernel.Tests\SharedKernel.Tests.CollectionsFixture.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

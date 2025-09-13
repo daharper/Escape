@@ -15,6 +15,13 @@ uses
   SharedKernel.Core;
 
 type
+  TSourceAction = (
+    saNone,
+    saFreeSource,
+    saFreeSourceObjects,
+    saFreeSourceAndObjects
+  );
+
   /// <summary>
   /// Utility methods to assist working with collections.
   /// </summary>
@@ -26,25 +33,44 @@ type
     class function ToObjectDictionary<T, V>(
       var aSource: TDictionary<T,V>;
       aOwnerships: TDictionaryOwnerships = [];
-      aCleanupSource: boolean = true): TObjectDictionary<T,V>; static;
+      const aSourceAction: TSourceAction = saNone): TObjectDictionary<T,V>; static;
+
+    /// <summary>
+    /// Adapts a list to a dictionary, using the default value of V for the values.
+    /// </summary>
+    class function ToMap<T, V>(
+      var aSource: TList<T>;
+      const aSourceAction: TSourceAction = saNone;
+      aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
 
      /// <summary>
      /// Adapts a list to a dictionary, optionally frees the list.
      /// If a comparer is specified it will use that, otherwise the default.
      /// </summary>
-    class function ToMap<T, V>(var aSource: TList<TPair<T, V>>; const aFreeSource: boolean = false; aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
+    class function ToMap<T, V>(
+      var aSource: TList<TPair<T, V>>;
+      const aSourceAction: TSourceAction = saNone;
+      aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
 
     /// <summary>
     /// Adapts a list to a dictionary, using the factory to generate values for the keys.
     /// Optionally frees the list. If a comparer is specified it will use that, otherwise the default.
     /// </summary>
-    class function ToMap<T, V>(var aSource: TList<T>; aFactory: TConstFunc<T, V>; const aFreeSource: boolean = false; aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
+    class function ToMap<T, V>(
+      var aSource: TList<T>;
+      aFactory: TConstFunc<T, V>;
+      const aSourceAction: TSourceAction = saNone;
+      aComparer: IEqualityComparer<T> = nil): TDictionary<T, V>; overload; static;
 
     /// <summary>
     /// Adapts a list to a dictionary, using the factory to generate key/value pairs.
     /// Optionally frees the list. If a comparer is specified it will use that, otherwise the default.
     /// </summary>
-    class function ToMap<T, K, V>(var aSource: TList<T>; aFactory: TConstFunc<T, TPair<K, V>>; const aFreeSource: boolean = false; aComparer: IEqualityComparer<K> = nil): TDictionary<K, V>; overload; static;
+    class function ToMap<T, K, V>(
+      var aSource: TList<T>;
+      aFactory: TConstFunc<T, TPair<K, V>>;
+      const aSourceAction: TSourceAction = saNone;
+      aComparer: IEqualityComparer<K> = nil): TDictionary<K, V>; overload; static;
 
     /// <summary>
     /// Copies an enumerable to an array.
@@ -79,7 +105,7 @@ type
     /// <summary>
     /// Frees objects in a list, optionally calling the supplied disposer.
     /// </summary>
-    class procedure FreeAll<T>(const aSource: TList<T>; const aDisposer: TDisposer<T> = nil); overload; static;
+    class procedure FreeAll<T>(var aSource: TList<T>; const aDisposer: TDisposer<T> = nil; const aSourceAction: TSourceAction = saNone); overload; static;
   end;
 
 implementation
@@ -245,8 +271,28 @@ end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollections.ToMap<T, V>(
+  var aSource: TList<T>;
+  const aSourceAction: TSourceAction;
+  aComparer: IEqualityComparer<T>): TDictionary<T, V>;
+var
+  lItem: T;
+begin
+  if not Assigned(aComparer) then
+    aComparer := TEqualityComparer<T>.Default;
+
+  Result := TDictionary<T, V>.Create(aComparer);
+
+  for lItem in aSource do
+    Result.AddOrSetValue(lItem, default(V));
+
+  if aSourceAction = saFreeSource  then
+    FreeAndNil(aSource);
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
+class function TCollections.ToMap<T, V>(
   var aSource: TList<TPair<T, V>>;
-  const aFreeSource: boolean;
+  const aSourceAction: TSourceAction;
   aComparer: IEqualityComparer<T>): TDictionary<T, V>;
 var
   lPair: TPair<T, V>;
@@ -259,14 +305,14 @@ begin
   for lPair in aSource do
     Result.AddOrSetValue(lPair.Key, lPair.Value);
 
-  if aFreeSource then
+  if aSourceAction = saFreeSource then
     FreeAndNil(aSource);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollections.ToMap<T, V>(
   var aSource: TList<T>; aFactory: TConstFunc<T, V>;
-  const aFreeSource: boolean;
+  const aSourceAction: TSourceAction;
   aComparer: IEqualityComparer<T>): TDictionary<T, V>;
 var
   lItem: T;
@@ -279,14 +325,14 @@ begin
   for lItem in aSource do
     Result.AddOrSetValue(lItem, aFactory(lItem));
 
-  if aFreeSource then
+  if aSourceAction = saFreeSource then
     FreeAndNil(aSource);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
 class function TCollections.ToMap<T, K, V>(
   var aSource: TList<T>; aFactory: TConstFunc<T, TPair<K, V>>;
-  const aFreeSource: boolean;
+  const aSourceAction: TSourceAction;
   aComparer: IEqualityComparer<K>): TDictionary<K, V>;
 var
   lItem: T;
@@ -303,7 +349,7 @@ begin
     Result.Add(lPair.Key, lPair.Value);
   end;
 
-  if aFreeSource then
+  if aSourceAction = saFreeSource then
     FreeAndNil(aSource);
 end;
 
@@ -311,23 +357,19 @@ end;
 class function TCollections.ToObjectDictionary<T, V>(
   var aSource: TDictionary<T, V>;
   aOwnerships: TDictionaryOwnerships;
-  aCleanupSource: boolean): TObjectDictionary<T, V>;
+  const aSourceAction: TSourceAction): TObjectDictionary<T, V>;
 begin
-  Result := TObjectDictionary<T,V>.Create(aOwnerships, aSource.Count, aSource.Comparer);
+  Result := TObjectDictionary<T,V>.Create(aOwnerships, aSource.Comparer);
 
-  for var p in aSource do
-    Result.Add(p.Key, p.Value);
+  for var item in aSource do
+    Result.Add(item.Key, item.Value);
 
-  if aCleanupSource then
-  begin
-    aSource.Clear;
-    aSource.Free;
-    aSource := nil;
-  end;
+  if aSourceAction = saFreeSource then
+    FreeAndNil(aSource);
 end;
 
 {----------------------------------------------------------------------------------------------------------------------}
-class procedure TCollections.FreeAll<T>(const aSource: TList<T>; const aDisposer: TDisposer<T>);
+class procedure TCollections.FreeAll<T>(var aSource: TList<T>; const aDisposer: TDisposer<T>; const aSourceAction: TSourceAction);
 var
   i, count: Integer;
   tmp: T;
@@ -351,6 +393,10 @@ begin
     end;
 
     aSource.Clear;
+
+    if aSourceAction in [saFreeSource, saFreeSourceAndObjects] then
+      FreeAndNil(aSource);
+
     exit;
   end;
 
@@ -385,6 +431,9 @@ begin
   end;
 
   aSource.Clear;
+
+  if aSourceAction in [saFreeSource, saFreeSourceAndObjects] then
+    FreeAndNil(aSource);
 end;
 
 end.
