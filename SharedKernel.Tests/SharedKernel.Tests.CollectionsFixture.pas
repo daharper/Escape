@@ -21,6 +21,9 @@ type
     procedure Teardown;
 
     [Test]
+    procedure Should_Convert_To_Map;
+
+    [Test]
     procedure Should_Convert_To_ObjectDictionary;
   end;
 
@@ -33,8 +36,28 @@ uses
   SharedKernel.Core,
   SharedKernel.Collections;
 
-{ TStreamFixture }
+{ TCollectionsFixture }
 
+{----------------------------------------------------------------------------------------------------------------------}
+procedure TCollectionsFixture.Should_Convert_To_Map;
+begin
+  var map := TCollections.ToMap<TClassyCustomer, integer, TClassyCustomer>(fClassyCustomers,
+    function (const c: TClassyCustomer): TPair<integer, TClassyCustomer>
+    begin
+      Result := TPair<integer, TClassyCustomer>.Create(c.Id, c);
+    end,
+    saNone);
+
+  Assert.AreEqual(3, map.Count);
+
+  Assert.AreEqual(1, map[1].Id);
+  Assert.AreEqual(2, map[2].Id);
+  Assert.AreEqual(3, map[3].Id);
+
+  map.Free;
+end;
+
+{----------------------------------------------------------------------------------------------------------------------}
 procedure TCollectionsFixture.Should_Convert_To_ObjectDictionary;
 begin
   var map := TCollections.ToMap<TClassyCustomer, integer, TClassyCustomer>(fClassyCustomers,
